@@ -13,7 +13,7 @@ import io.ktor.server.testing.*
 import io.ktor.util.*
 import kotlin.test.*
 
-class DynamicConfigFeatureTest {
+class RoutingScopedFeatureTest {
 
     @Test
     fun testFeatureInstalledTopLevel() = withTestApplication {
@@ -353,6 +353,73 @@ class DynamicConfigFeatureTest {
         }
     }
 
+    @Test
+    fun testFeatureMergedInstallationsAndLastWins() = withTestApplication {
+        val callbackResults = mutableListOf<String>()
+        val receiveCallbackResults = mutableListOf<String>()
+        val sendCallbackResults = mutableListOf<String>()
+        val allCallbacks = listOf(callbackResults, receiveCallbackResults, sendCallbackResults)
+
+        application.routing {
+            route("root") {
+                install(TestFeature) {
+                    name = "foo"
+                    desc = "first feature"
+                    addCallbacks(callbackResults, receiveCallbackResults, sendCallbackResults)
+                }
+                get("a") {
+                    call.respond(call.receive<String>())
+                }
+            }
+            route("root") {
+                install(TestFeature) {
+                    name = "bar"
+                    desc = "second feature"
+                    addCallbacks(callbackResults, receiveCallbackResults, sendCallbackResults)
+                }
+                get("b") {
+                    call.respond(call.receive<String>())
+                }
+            }
+        }
+
+        on("making get request to /root/a") {
+            val result = handleRequest {
+                uri = "/root/a"
+                method = HttpMethod.Get
+                setBody("test")
+            }
+            it("should be handled") {
+                assertTrue(result.requestHandled)
+            }
+            it("second callback should be invoked") {
+                allCallbacks.forEach {
+                    assertEquals(1, it.size)
+                    assertEquals("bar second feature", it[0])
+                    it.clear()
+                }
+            }
+        }
+
+        on("making get request to /root/b") {
+            val result = handleRequest {
+                uri = "/root/b"
+                method = HttpMethod.Get
+                setBody("test")
+            }
+            it("should be handled") {
+                assertTrue(result.requestHandled)
+            }
+            it("second callback should be invoked") {
+                allCallbacks.forEach {
+                    assertEquals(1, it.size)
+                    assertEquals("bar second feature", it[0])
+                    it.clear()
+                }
+            }
+        }
+    }
+
     private fun TestFeature.Config.addCallbacks(
         callbackResults: MutableList<String>,
         receiveCallbackResults: MutableList<String>,
@@ -389,7 +456,7 @@ class TestFeature {
         var sendPipelineCallback: (String) -> Unit = {},
     )
 
-    companion object Feature : DynamicConfigFeature<ApplicationCallPipeline, Config, TestFeature> {
+    companion object Feature : RoutingScopedFeature<ApplicationCallPipeline, Config, TestFeature> {
 
         override val key: AttributeKey<TestFeature> = AttributeKey("TestFeature")
 

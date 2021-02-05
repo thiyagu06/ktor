@@ -14,7 +14,7 @@ import io.ktor.util.pipeline.*
  * @param feature application feature to lookup
  * @return an instance of feature
  */
-public fun <A : Pipeline<*, ApplicationCall>, B : Any, F : Any> A.feature(feature: DynamicConfigFeature<A, B, F>): F {
+public fun <A : Pipeline<*, ApplicationCall>, B : Any, F : Any> A.feature(feature: RoutingScopedFeature<A, B, F>): F {
     return findFeatureInRoute(feature) ?: throw MissingApplicationFeatureException(feature.key)
 }
 
@@ -24,7 +24,8 @@ public fun <A : Pipeline<*, ApplicationCall>, B : Any, F : Any> A.feature(featur
  * @param TConfiguration is the type for the configuration object for this Feature
  * @param TFeature is the type for the instance of the Feature object
  */
-public interface DynamicConfigFeature<in TPipeline : Pipeline<*, ApplicationCall>, TConfiguration : Any, TFeature : Any> :
+public interface RoutingScopedFeature<
+    in TPipeline : Pipeline<*, ApplicationCall>, TConfiguration : Any, TFeature : Any> :
     ApplicationFeature<TPipeline, TConfiguration, TFeature> {
 
     /**
@@ -34,8 +35,8 @@ public interface DynamicConfigFeature<in TPipeline : Pipeline<*, ApplicationCall
         get() = EquatableAttributeKey("${key.name}_configBuilder")
 
     @Deprecated(
-        "This feature can change it's configurations by calling `config` function in routing. " +
-            "To get latest config please use `configurationBlock` property inside call interceptor.",
+        "This feature can be installed multiple times in routing with different configs. " +
+            "To get actual config for current route use `configurationBlock` property inside call interceptor.",
         replaceWith = ReplaceWith("install"),
         level = DeprecationLevel.ERROR
     )
@@ -59,7 +60,7 @@ public interface DynamicConfigFeature<in TPipeline : Pipeline<*, ApplicationCall
  * Installs [feature] into this pipeline, if it is not yet installed
  */
 public fun <P : Pipeline<*, ApplicationCall>, B : Any, F : Any> P.install(
-    feature: DynamicConfigFeature<P, B, F>,
+    feature: RoutingScopedFeature<P, B, F>,
     configure: B.() -> Unit = {}
 ): F {
     intercept(ApplicationCallPipeline.Setup) {
@@ -84,7 +85,7 @@ public fun <P : Pipeline<*, ApplicationCall>, B : Any, F : Any> P.install(
 }
 
 private fun <P : Pipeline<*, ApplicationCall>, B : Any, F : Any> P.findFeatureInRoute(
-    feature: DynamicConfigFeature<P, B, F>
+    feature: RoutingScopedFeature<P, B, F>
 ): F? {
     var current: Route? = this as? Route
     while (current != null) {

@@ -22,7 +22,7 @@ public open class AttributeKey<T>(public val name: String) {
  * @param T is type of the value stored in the attribute
  * @param name is a name of the attribute
  */
-public class EquatableAttributeKey<T>(name: String): AttributeKey<T>(name) {
+public class EquatableAttributeKey<T>(name: String) : AttributeKey<T>(name) {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
