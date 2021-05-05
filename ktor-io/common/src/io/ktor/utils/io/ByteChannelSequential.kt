@@ -21,7 +21,7 @@ public suspend fun ByteChannelSequentialBase.copyTo(
     return copyToSequentialImpl(dst, limit)
 }
 
-private const val EXPECTED_CAPACITY: Long = 4088L
+private const val EXPECTED_CAPACITY: Long = 8L * 1024L - 8L
 
 /**
  * Sequential (non-concurrent) byte channel implementation

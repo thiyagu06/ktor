@@ -3,7 +3,7 @@ package io.ktor.utils.io.internal
 import io.ktor.utils.io.pool.*
 import java.nio.*
 
-internal val BUFFER_SIZE = getIOIntProperty("BufferSize", 4096)
+internal val BUFFER_SIZE = getIOIntProperty("BufferSize", 8 * 1024)
 private val BUFFER_POOL_SIZE = getIOIntProperty("BufferPoolSize", 2048)
 private val BUFFER_OBJECT_POOL_SIZE = getIOIntProperty("BufferObjectPoolSize", 1024)
 

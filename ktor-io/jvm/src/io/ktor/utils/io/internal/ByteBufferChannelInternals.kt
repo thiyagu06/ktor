@@ -48,7 +48,7 @@ internal object TerminatedLookAhead : LookAheadSuspendSession {
 
     override suspend fun awaitAtLeast(n: Int): Boolean {
         require(n >= 0) { "atLeast parameter shouldn't be negative: $n" }
-        require(n <= 4088) { "atLeast parameter shouldn't be larger than max buffer size of 4088: $n" }
+        require(n <= 8 * 1024 - 8) { "atLeast parameter shouldn't be larger than max buffer size of 4088: $n" }
 
         return false
     }

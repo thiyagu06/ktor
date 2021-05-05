@@ -21,7 +21,7 @@ import kotlin.coroutines.intrinsics.*
 import kotlin.require
 
 internal const val DEFAULT_CLOSE_MESSAGE: String = "Byte channel was closed"
-private const val BYTE_BUFFER_CAPACITY: Int = 4088
+private const val BYTE_BUFFER_CAPACITY: Int = 8 * 1024 - 8
 
 // implementation for ByteChannel
 internal open class ByteBufferChannel(
