@@ -43,29 +43,9 @@ public fun File.readChannel(
                 fileChannel.position(start)
             }
 
-            if (endInclusive == -1L) {
-                @Suppress("DEPRECATION")
-                channel.writeSuspendSession {
-                    while (true) {
-                        val buffer = request(1)
-                        if (buffer == null) {
-                            channel.flush()
-                            tryAwait(1)
-                            continue
-                        }
-
-                        val rc = fileChannel.read(buffer)
-                        if (rc == -1) break
-                        written(rc)
-                    }
-                }
-
-                return@use
-            }
-
             var position = start
             channel.writeWhile { buffer ->
-                val fileRemaining = endInclusive - position + 1
+                val fileRemaining = if (endInclusive == -1L) Long.MAX_VALUE else endInclusive - position + 1
                 val rc = if (fileRemaining < buffer.remaining()) {
                     val l = buffer.limit()
                     buffer.limit(buffer.position() + fileRemaining.toInt())
@@ -78,7 +58,7 @@ public fun File.readChannel(
 
                 if (rc > 0) position += rc
 
-                rc != -1 && position <= endInclusive
+                rc != -1 && (endInclusive == -1L || position <= endInclusive)
             }
         }
     }.channel
