@@ -34,6 +34,7 @@ class BodyProgressTest : ClientLoader() {
             }
         }
         repeat(100) {
+            delay(100)
             println("Iteration $it")
             test { client ->
                 invokedCount = 0
