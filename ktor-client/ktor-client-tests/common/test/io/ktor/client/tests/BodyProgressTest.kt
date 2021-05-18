@@ -33,17 +33,19 @@ class BodyProgressTest : ClientLoader() {
                 serializer = KotlinxSerializer()
             }
         }
+        repeat(100) {
+            println("Iteration $it")
+            test { client ->
+                invokedCount = 0
+                val listener: ProgressListener = { _, _ -> invokedCount++ }
 
-        test { client ->
-            invokedCount = 0
-            val listener: ProgressListener = { _, _ -> invokedCount++ }
-
-            val response: HttpResponse = client.post("$TEST_SERVER/content/echo") {
-                contentType(ContentType.Application.Json)
-                body = User("123".repeat(5000), 1)
-                onUpload(listener)
+                val response: HttpResponse = client.post("$TEST_SERVER/content/echo") {
+                    contentType(ContentType.Application.Json)
+                    body = User("123".repeat(5000), 1)
+                    onUpload(listener)
+                }
+                assertTrue(invokedCount >= 2)
             }
-            assertTrue(invokedCount >= 2)
         }
     }
 
