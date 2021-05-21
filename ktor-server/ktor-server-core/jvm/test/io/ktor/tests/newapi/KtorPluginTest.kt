@@ -1,0 +1,162 @@
+/*
+ * Copyright 2014-2021 JetBrains s.r.o and contributors. Use of this source code is governed by the Apache 2.0 license.
+ */
+
+package io.ktor.tests.newapi
+
+import io.ktor.application.*
+import io.ktor.application.newapi.KtorPlugin.Companion.createPlugin
+import io.ktor.http.*
+import io.ktor.response.*
+import io.ktor.routing.*
+import io.ktor.server.testing.*
+import io.ktor.sessions.*
+import io.ktor.util.*
+import kotlin.test.*
+
+class KtorPluginTest {
+    @Test
+    fun `test empty plugin does not break pipeline`(): Unit = withTestApplication {
+        val plugin = createPlugin("F", createConfiguration = {}) {
+        }
+
+        application.install(plugin)
+
+        application.routing {
+            get("/request") {
+                call.respondText("response")
+            }
+        }
+
+        handleRequest(HttpMethod.Get, "/request").let { call ->
+            assertEquals("response", call.response.content)
+        }
+    }
+
+    @Test
+    fun `test plugin with single interception`() {
+        data class Config(var enabled: Boolean = true)
+
+        val plugin = createPlugin("F", createConfiguration = { Config() }) {
+            onCall {
+                if (plugin.enabled) {
+                    call.respondText("Plugin enabled!")
+                    finish()
+                }
+            }
+        }
+
+        fun assertWithPlugin(pluginEnabled: Boolean, expectedResponse: String) = withTestApplication {
+            application.install(plugin) {
+                enabled = pluginEnabled
+            }
+
+            application.routing {
+                get("/request") {
+                    call.respondText("response")
+                }
+            }
+
+            handleRequest(HttpMethod.Get, "/request").let { call ->
+                assertEquals(expectedResponse, call.response.content)
+            }
+        }
+
+        assertWithPlugin(pluginEnabled = false, expectedResponse = "response")
+        assertWithPlugin(pluginEnabled = true, expectedResponse = "Plugin enabled!")
+    }
+
+    @Test
+    fun `test plugin with multiple phases`() {
+        val plugin = createPlugin("F", createConfiguration = { }) {
+            val key = AttributeKey<String>("FKey")
+
+            onCall {
+                val data = call.request.headers["F"]
+                if (data != null) {
+                    call.attributes.put(key, data)
+                }
+            }
+            onResponse.before {
+                val data = call.attributes.getOrNull(key)
+                if (data != null) {
+                    proceedWith(data)
+                }
+            }
+        }
+
+        fun assertWithPlugin(expectedResponse: String, data: String? = null) = withTestApplication {
+            application.install(plugin)
+
+            application.routing {
+                get("/request") {
+                    call.respondText("response")
+                }
+            }
+
+            handleRequest(HttpMethod.Get, "/request") {
+                if (data != null) {
+                    this.addHeader("F", data)
+                }
+            }.let { call ->
+                val content = call.response.content
+                assertEquals(expectedResponse, content)
+            }
+        }
+
+        assertWithPlugin(expectedResponse = "response", data = null)
+        assertWithPlugin(expectedResponse = "custom data", data = "custom data")
+    }
+
+    class FConfig {
+        companion object {
+            val Key = AttributeKey<String>("FKey")
+        }
+    }
+
+    @Test
+    fun `test dependent plugins`() {
+        val pluginF = createPlugin("F", {}) {
+            onResponse.before {
+                val data = call.attributes.getOrNull(FConfig.Key)
+                if (data != null) {
+                    proceedWith(data)
+                }
+            }
+        }
+
+        val pluginG = createPlugin("G", {}) {
+            beforePlugin(pluginF) {
+                onResponse.before {
+                    val data = call.request.headers["F"]
+                    if (data != null) {
+                        call.attributes.put(FConfig.Key, data)
+                    }
+                }
+            }
+        }
+
+        fun assertWithPlugin(expectedResponse: String, data: String? = null) = withTestApplication {
+            application.install(pluginF)
+            application.install(pluginG)
+
+            application.routing {
+                get("/request") {
+                    call.respondText("response")
+                }
+            }
+
+            handleRequest(HttpMethod.Get, "/request") {
+                if (data != null) {
+                    this.addHeader("F", data)
+                }
+            }.let { call ->
+                val content = call.response.content
+                assertEquals(expectedResponse, content)
+            }
+        }
+
+        assertWithPlugin(expectedResponse = "response", data = null)
+        assertWithPlugin(expectedResponse = "custom data", data = "custom data")
+    }
+}
