@@ -21,6 +21,8 @@ import java.util.*
 import javax.net.ssl.*
 import kotlin.coroutines.*
 
+private val METHODS_WITHOUT_BODY = listOf(HttpMethod.Get, HttpMethod.Head)
+
 /**
  * Android client engine
  */
@@ -65,7 +67,11 @@ public class AndroidClientEngine(override val config: AndroidEngineConfig) : Htt
 
             config.requestConfig(this)
 
-            if (data.method in listOf(HttpMethod.Get, HttpMethod.Head)) {
+            if (data.method in METHODS_WITHOUT_BODY) {
+                if (outgoingContent is OutgoingContent.NoContent) {
+                    return@apply
+                }
+
                 error("Request of type ${data.method} couldn't send a body with the [Android] engine.")
             }
 
@@ -120,7 +126,8 @@ internal suspend fun OutgoingContent.writeTo(
 
             channel.copyTo(blockingOutput)
         }
-        is OutgoingContent.NoContent -> {}
+        is OutgoingContent.NoContent -> {
+        }
         else -> throw UnsupportedContentTypeException(this)
     }
 }

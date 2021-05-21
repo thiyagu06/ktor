@@ -12,12 +12,15 @@ import kotlin.test.*
 
 class HeadersTest : ClientLoader() {
 
+    /**
+     * URLConnection can't set the Content-Length header for get requests.
+     */
     @Test
-    fun testHeadersReturnNullWhenMissing() = clientTests {
+    fun testHeadersReturnNullWhenMissing() = clientTests(listOf("Android")) {
         test { client ->
             client.get<HttpResponse>("$TEST_SERVER/headers").let {
                 assertEquals(HttpStatusCode.OK, it.status)
-                assertEquals("OK", it.readText())
+                assertEquals("0", it.readText())
 
                 assertNull(it.headers["X-Nonexistent-Header"])
                 assertNull(it.headers.getAll("X-Nonexistent-Header"))
