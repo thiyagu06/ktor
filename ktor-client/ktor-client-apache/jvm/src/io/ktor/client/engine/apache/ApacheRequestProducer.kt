@@ -122,17 +122,15 @@ internal class ApacheRequestProducer(
             }
         }
 
-        if (body !is OutgoingContent.NoContent && body !is OutgoingContent.ProtocolUpgrade) {
-            builder.entity = BasicHttpEntity().apply {
-                val lengthResult = length
-                if (lengthResult == null || lengthResult.isBlank()) {
-                    isChunked = true
-                } else {
-                    contentLength = lengthResult.toLong()
-                }
-
-                setContentType(type)
+        builder.entity = BasicHttpEntity().apply {
+            val lengthResult = length
+            if (lengthResult == null || lengthResult.isBlank()) {
+                isChunked = true
+            } else {
+                contentLength = lengthResult.toLong()
             }
+
+            setContentType(type)
         }
 
         with(config) {

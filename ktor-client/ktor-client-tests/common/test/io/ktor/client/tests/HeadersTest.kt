@@ -90,4 +90,15 @@ class HeadersTest : ClientLoader() {
             assertEquals(expected, message)
         }
     }
+
+    @Test
+    fun testRequestHasContentLength() = clientTests {
+        test { client ->
+            val first = client.put<String>("$TEST_SERVER/headers")
+            assertEquals("0", first)
+
+            val second = client.post<String>("$TEST_SERVER/headers")
+            assertEquals("0", second)
+        }
+    }
 }
